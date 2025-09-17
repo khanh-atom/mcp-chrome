@@ -13,153 +13,47 @@ const {
 const PORT = 12307;
 const MCP_SERVER_URL = 'http://127.0.0.1:12306/mcp';
 
-// MCP client instance and state management
-let mcpClient = null;
-let isInitializing = false;
-let isConnected = false;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_DELAY = 2000; // 2 seconds
+// On-demand MCP client usage with simple in-memory cache
+// Cache to avoid excessive calls to MCP server
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const responseCache = new Map(); // key -> { value, expiresAt }
+const inflightRequests = new Map(); // key -> Promise
 
-// Initialize MCP client
-async function initializeMcpClient() {
-  // Prevent multiple simultaneous initializations
-  if (isInitializing) {
-    console.log('MCP client initialization already in progress, skipping...');
-    return false;
-  }
+function getFromCache(cacheKey) {
+  const entry = responseCache.get(cacheKey);
+  if (!entry) return null;
+  if (entry.expiresAt > Date.now()) return entry.value;
+  responseCache.delete(cacheKey);
+  return null;
+}
 
-  if (isConnected && mcpClient) {
-    console.log('MCP client already connected, skipping initialization...');
-    return true;
-  }
+function setCache(cacheKey, value, ttlMs = CACHE_TTL_MS) {
+  responseCache.set(cacheKey, { value, expiresAt: Date.now() + ttlMs });
+}
 
-  isInitializing = true;
-
+// Create ephemeral MCP client for a single request and close after done
+async function callMcpToolOnce(toolName, toolArgs) {
+  const client = new Client(
+    { name: 'HTTP-Wrapper-Client', version: '1.0.0' },
+    { capabilities: {} },
+  );
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL), {});
   try {
-    console.log('Initializing MCP client...');
-
-    // Close existing client if it exists
-    if (mcpClient) {
-      try {
-        await mcpClient.close();
-      } catch (closeError) {
-        console.log('Error closing existing client:', closeError.message);
-      }
-      mcpClient = null;
-    }
-
-    mcpClient = new Client(
-      {
-        name: 'HTTP-Wrapper-Client',
-        version: '1.0.0',
-      },
-      {
-        capabilities: {},
-      },
-    );
-
-    const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL), {});
-    await mcpClient.connect(transport);
-
-    isConnected = true;
-    reconnectAttempts = 0;
-    console.log('MCP client connected successfully');
-
-    // Set up connection monitoring
-    setupConnectionMonitoring();
-
-    return true;
-  } catch (error) {
-    console.error('Failed to initialize MCP client:', error);
-    isConnected = false;
-
-    // Attempt reconnection if we haven't exceeded max attempts
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      console.log(
-        `Reconnection attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY}ms...`,
-      );
-      setTimeout(() => {
-        reconnectAttempts++;
-        initializeMcpClient();
-      }, RECONNECT_DELAY);
-    } else {
-      console.error('Max reconnection attempts reached. Manual intervention required.');
-    }
-
-    return false;
+    await client.connect(transport);
+    const result = await client.callTool({ name: toolName, arguments: toolArgs }, undefined, {
+      timeout: 30000,
+    });
+    return result;
   } finally {
-    isInitializing = false;
-  }
-}
-
-// Monitor connection health and reconnect if needed
-function setupConnectionMonitoring() {
-  if (!mcpClient) return;
-
-  // Check connection health every 30 seconds
-  const healthCheckInterval = setInterval(async () => {
-    if (!mcpClient || !isConnected) {
-      clearInterval(healthCheckInterval);
-      return;
-    }
-
     try {
-      // Send a simple ping to check if connection is alive
-      await mcpClient.sendRequest({
-        jsonrpc: '2.0',
-        id: 'health-check',
-        method: 'ping',
-        params: {},
-      });
+      await client.close();
     } catch (error) {
-      console.log('Connection health check failed, attempting reconnection...');
-      isConnected = false;
-      clearInterval(healthCheckInterval);
-      await initializeMcpClient();
+      console.log('Error closing MCP client:', error.message);
     }
-  }, 30000);
-}
-
-// Send request to MCP server using proper client
-async function sendToMcpServer(message) {
-  if (!mcpClient || !isConnected) {
-    throw new Error('MCP client not initialized or not connected');
-  }
-
-  try {
-    // For tool calls, use the proper MCP client method
-    if (message.method === 'tools/call') {
-      const result = await mcpClient.callTool(
-        {
-          name: message.params.name,
-          arguments: message.params.arguments,
-        },
-        undefined,
-        {
-          timeout: 30000, // 30 second timeout
-        },
-      );
-      return result;
-    } else {
-      // For other methods, send as generic message
-      const result = await mcpClient.sendRequest(message);
-      return result;
-    }
-  } catch (error) {
-    // If we get a connection error, try to reconnect
-    if (error.message.includes('connection') || error.message.includes('closed')) {
-      console.log('Connection error detected, attempting reconnection...');
-      isConnected = false;
-      await initializeMcpClient();
-      // Retry the request once after reconnection
-      if (isConnected && mcpClient) {
-        return await sendToMcpServer(message);
-      }
-    }
-    throw new Error(`MCP client error: ${error.message}`);
   }
 }
+
+// No generic send function needed in on-demand mode for now
 
 // HTTP server
 const server = http.createServer(async (req, res) => {
@@ -187,14 +81,9 @@ const server = http.createServer(async (req, res) => {
         timestamp: new Date().toISOString(),
         message: 'HTTP Wrapper Server is running',
         mcpServerUrl: MCP_SERVER_URL,
-        mcpClientReady: mcpClient !== null && isConnected,
-        connectionStatus: {
-          isConnected,
-          isInitializing,
-          reconnectAttempts,
-          maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
-        },
-        note: 'Connects directly to MCP server using MCP client',
+        mcpClientMode: 'on-demand',
+        cache: { entries: responseCache.size, ttlMs: CACHE_TTL_MS },
+        note: 'Connects to MCP server only when handling a request and disconnects after',
       }),
     );
     return;
@@ -220,22 +109,6 @@ const server = http.createServer(async (req, res) => {
 
           console.log(`Get cookie request for URL: ${targetUrl}`);
 
-          if (!mcpClient || !isConnected) {
-            res.writeHead(503, { 'Content-Type': 'application/json' });
-            res.end(
-              JSON.stringify({
-                error: 'MCP client not ready',
-                message: 'Please wait for MCP client initialization',
-                status: {
-                  isConnected,
-                  isInitializing,
-                  reconnectAttempts,
-                },
-              }),
-            );
-            return;
-          }
-
           // Create MCP tool call message
           const mcpMessage = {
             jsonrpc: '2.0',
@@ -249,11 +122,39 @@ const server = http.createServer(async (req, res) => {
             },
           };
 
-          console.log('Sending to MCP server via client:', mcpMessage);
+          // Cache key for this call
+          const cacheKey = `get-cookie:${targetUrl}`;
+          const cached = getFromCache(cacheKey);
+          if (cached) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                success: true,
+                message: `Cookies retrieved from ${targetUrl} (cache)`,
+                response: cached,
+                request: mcpMessage,
+                cache: { hit: true },
+              }),
+            );
+            return;
+          }
 
           try {
-            // Send request to MCP server using client
-            const response = await sendToMcpServer(mcpMessage);
+            // Deduplicate in-flight requests for the same key
+            let promise = inflightRequests.get(cacheKey);
+            if (!promise) {
+              promise = (async () => {
+                // Send request to MCP server using ephemeral client
+                const response = await callMcpToolOnce(
+                  mcpMessage.params.name,
+                  mcpMessage.params.arguments,
+                );
+                setCache(cacheKey, response);
+                return response;
+              })();
+              inflightRequests.set(cacheKey, promise);
+            }
+            const response = await promise.finally(() => inflightRequests.delete(cacheKey));
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(
@@ -262,6 +163,7 @@ const server = http.createServer(async (req, res) => {
                 message: `Cookies retrieved from ${targetUrl}`,
                 response: response,
                 request: mcpMessage,
+                cache: { hit: false },
               }),
             );
           } catch (mcpError) {
@@ -301,13 +203,9 @@ const server = http.createServer(async (req, res) => {
             parameters: {
               url: 'string - URL of the website to get cookies from',
             },
-            note: 'Connects directly to MCP server using MCP client at ' + MCP_SERVER_URL,
-            status: mcpClient && isConnected ? 'ready' : 'initializing',
-            connectionInfo: {
-              isConnected,
-              isInitializing,
-              reconnectAttempts,
-            },
+            note: 'On-demand MCP connection (connect per request) at ' + MCP_SERVER_URL,
+            status: 'on-demand',
+            cache: { ttlMs: CACHE_TTL_MS },
           },
         ],
       }),
@@ -328,25 +226,12 @@ server.listen(PORT, async () => {
   console.log(`  GET  /tools - List available tools`);
   console.log(`  POST /tools/get-cookie - Get cookies from a website`);
   console.log('');
-  console.log(`Connecting to MCP server at: ${MCP_SERVER_URL}`);
-  console.log('Note: This wrapper uses MCP client for proper protocol handling');
-
-  // Initialize MCP client after server starts
-  setTimeout(async () => {
-    await initializeMcpClient();
-  }, 1000);
+  console.log('Note: MCP connections are established on-demand per request');
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down...');
-  if (mcpClient) {
-    try {
-      await mcpClient.close();
-    } catch (error) {
-      console.log('Error closing MCP client:', error.message);
-    }
-  }
   server.close(() => {
     console.log('HTTP server closed');
     process.exit(0);
@@ -355,13 +240,6 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down...');
-  if (mcpClient) {
-    try {
-      await mcpClient.close();
-    } catch (error) {
-      console.log('Error closing MCP client:', error.message);
-    }
-  }
   server.close(() => {
     console.log('HTTP server closed');
     process.exit(0);
