@@ -82,6 +82,24 @@
 }
 ```
 
+### `chrome_switch_tab`
+
+切换到指定的浏览器标签页。
+
+**参数**：
+
+- `tabId` (数字，必需)：要切换到的标签页的 ID。
+- `windowId` (数字，可选)：该标签页所在窗口的 ID。
+
+**示例**：
+
+```json
+{
+  "tabId": 456,
+  "windowId": 123
+}
+```
+
 ### `chrome_go_back_or_forward`
 
 浏览器历史导航。

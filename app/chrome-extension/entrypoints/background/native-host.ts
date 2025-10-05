@@ -145,6 +145,11 @@ export function connectNativeHost(port: number = NATIVE_HOST.DEFAULT_PORT) {
         console.log(SUCCESS_MESSAGES.SERVER_STOPPED);
       } else if (message.type === NativeMessageType.ERROR_FROM_NATIVE_HOST) {
         console.error('Error from native host:', message.payload?.message || 'Unknown error');
+      } else if (message.type === 'file_operation_response') {
+        // Forward file operation response back to the requesting tool
+        chrome.runtime.sendMessage(message).catch(() => {
+          // Ignore if no listeners
+        });
       }
     });
 
@@ -231,6 +236,17 @@ export const initNativeHostListener = () => {
             connected: nativePort !== null,
           });
         });
+      return true;
+    }
+
+    // Forward file operation messages to native host
+    if (message.type === 'forward_to_native' && message.message) {
+      if (nativePort) {
+        nativePort.postMessage(message.message);
+        sendResponse({ success: true });
+      } else {
+        sendResponse({ success: false, error: 'Native host not connected' });
+      }
       return true;
     }
   });

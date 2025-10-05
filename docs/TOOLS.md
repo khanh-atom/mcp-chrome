@@ -82,6 +82,24 @@ Close specific tabs or windows.
 }
 ```
 
+### `chrome_switch_tab`
+
+Switch to a specific browser tab.
+
+**Parameters**:
+
+- `tabId` (number, required): The ID of the tab to switch to.
+- `windowId` (number, optional): The ID of the window where the tab is located.
+
+**Example**:
+
+```json
+{
+  "tabId": 456,
+  "windowId": 123
+}
+```
+
 ### `chrome_go_back_or_forward`
 
 Navigate browser history.

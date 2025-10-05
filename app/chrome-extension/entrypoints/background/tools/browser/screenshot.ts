@@ -19,7 +19,16 @@ const SCREENSHOT_CONSTANTS = {
   MAX_CAPTURE_HEIGHT_PX: 50000, // Maximum height in pixels to capture
   PIXEL_TOLERANCE: 1,
   SCRIPT_INIT_DELAY: 100, // Delay for script initialization
-} as const;
+} as {
+  readonly SCROLL_DELAY_MS: number;
+  CAPTURE_STITCH_DELAY_MS: number; // This one is mutable
+  readonly MAX_CAPTURE_PARTS: number;
+  readonly MAX_CAPTURE_HEIGHT_PX: number;
+  readonly PIXEL_TOLERANCE: number;
+  readonly SCRIPT_INIT_DELAY: number;
+};
+
+SCREENSHOT_CONSTANTS["CAPTURE_STITCH_DELAY_MS"] = Math.max(1000 / chrome.tabs.MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND - SCREENSHOT_CONSTANTS.SCROLL_DELAY_MS, SCREENSHOT_CONSTANTS.CAPTURE_STITCH_DELAY_MS)
 
 interface ScreenshotToolParams {
   name: string;
