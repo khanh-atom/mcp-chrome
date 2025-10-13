@@ -1275,7 +1275,7 @@ if (window.__WEB_FETCHER_HELPER_INITIALIZED__) {
           var MINIMUM_TOPCANDIDATES = 3;
           if (alternativeCandidateAncestors.length >= MINIMUM_TOPCANDIDATES) {
             parentOfTopCandidate = topCandidate.parentNode;
-            while (parentOfTopCandidate.tagName !== 'BODY') {
+            while (parentOfTopCandidate && parentOfTopCandidate.tagName !== 'BODY') {
               var listsContainingThisAncestor = 0;
               for (
                 var ancestorIndex = 0;
@@ -1309,7 +1309,7 @@ if (window.__WEB_FETCHER_HELPER_INITIALIZED__) {
           var lastScore = topCandidate.readability.contentScore;
           // The scores shouldn't get too low.
           var scoreThreshold = lastScore / 3;
-          while (parentOfTopCandidate.tagName !== 'BODY') {
+          while (parentOfTopCandidate && parentOfTopCandidate.tagName !== 'BODY') {
             if (!parentOfTopCandidate.readability) {
               parentOfTopCandidate = parentOfTopCandidate.parentNode;
               continue;
@@ -1331,6 +1331,7 @@ if (window.__WEB_FETCHER_HELPER_INITIALIZED__) {
           // joining logic when adjacent content is actually located in parent's sibling node.
           parentOfTopCandidate = topCandidate.parentNode;
           while (
+            parentOfTopCandidate &&
             parentOfTopCandidate.tagName != 'BODY' &&
             parentOfTopCandidate.children.length == 1
           ) {

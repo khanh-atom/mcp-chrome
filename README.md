@@ -1,5 +1,3 @@
-[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/hangwin-mcp-chrome-badge.png)](https://mseep.ai/app/hangwin-mcp-chrome)
-
 # Chrome MCP Server 🚀
 
 [![Stars](https://img.shields.io/github/stars/hangwin/mcp-chrome)](https://img.shields.io/github/stars/hangwin/mcp-chrome)

@@ -5,6 +5,7 @@
 ## 功能特性
 
 - 通过Chrome Native Messaging协议与Chrome扩展进行双向通信
+- **支持多浏览器**: Chrome 和 Chromium (包括 Linux、macOS 和 Windows)
 - 提供RESTful API服务
 - 完全使用TypeScript开发
 - 包含完整的测试套件
@@ -14,7 +15,7 @@
 
 ### 前置条件
 
-- Node.js 14+ 
+- Node.js 14+
 - npm 6+
 
 ### 安装
@@ -28,11 +29,14 @@ npm install
 ### 开发
 
 1. 本地构建注册native server
+
 ```bash
 cd app/native-server
 npm run dev
 ```
+
 2. 启动chrome extension
+
 ```bash
 cd app/chrome-extension
 npm run dev
@@ -46,10 +50,43 @@ npm run build
 
 ### 注册Native Messaging主机
 
-全局安装后会自动注册
+#### 自动检测并注册所有已安装的浏览器
+
+```bash
+mcp-chrome-bridge register --detect
+```
+
+#### 注册特定浏览器
+
+```bash
+# 仅注册 Chrome
+mcp-chrome-bridge register --browser chrome
+
+# 仅注册 Chromium
+mcp-chrome-bridge register --browser chromium
+
+# 注册所有支持的浏览器
+mcp-chrome-bridge register --browser all
+```
+
+#### 全局安装（会自动注册检测到的浏览器）
+
 ```bash
 npm i -g mcp-chrome-bridge
 ```
+
+#### 浏览器支持
+
+| 浏览器        | Linux | macOS | Windows |
+| ------------- | ----- | ----- | ------- |
+| Google Chrome | ✓     | ✓     | ✓       |
+| Chromium      | ✓     | ✓     | ✓       |
+
+注册位置：
+
+- **Linux**: `~/.config/[browser-name]/NativeMessagingHosts/`
+- **macOS**: `~/Library/Application Support/[Browser]/NativeMessagingHosts/`
+- **Windows**: `%APPDATA%\[Browser]\NativeMessagingHosts\`
 
 ### 与Chrome扩展集成
 
@@ -66,13 +103,13 @@ function startServer() {
     console.log('已连接到Native Messaging主机');
     return;
   }
-  
+
   try {
     nativePort = chrome.runtime.connectNative('com.yourcompany.fastify_native_host');
-    
-    nativePort.onMessage.addListener(message => {
+
+    nativePort.onMessage.addListener((message) => {
       console.log('收到Native消息:', message);
-      
+
       if (message.type === 'started') {
         serverRunning = true;
         console.log(`服务已启动，端口: ${message.payload.port}`);
@@ -83,16 +120,15 @@ function startServer() {
         console.error('Native错误:', message.payload.message);
       }
     });
-    
+
     nativePort.onDisconnect.addListener(() => {
       console.log('Native连接断开:', chrome.runtime.lastError);
       nativePort = null;
       serverRunning = false;
     });
-    
+
     // 启动服务器
     nativePort.postMessage({ type: 'start', payload: { port: 3000 } });
-    
   } catch (error) {
     console.error('启动Native Messaging时出错:', error);
   }
