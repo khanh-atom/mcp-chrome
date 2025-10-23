@@ -7,6 +7,7 @@ export const TOOL_NAMES = {
     NAVIGATE: 'chrome_navigate',
     SCREENSHOT: 'chrome_screenshot',
     CLOSE_TABS: 'chrome_close_tabs',
+    SWITCH_TAB: 'chrome_switch_tab',
     GO_BACK_OR_FORWARD: 'chrome_go_back_or_forward',
     WEB_FETCHER: 'chrome_get_web_content',
     CLICK: 'chrome_click_element',
@@ -26,6 +27,7 @@ export const TOOL_NAMES = {
     SEND_COMMAND_TO_INJECT_SCRIPT: 'chrome_send_command_to_inject_script',
     CONSOLE: 'chrome_console',
     GET_COOKIE: 'chrome_get_cookie',
+    FILE_UPLOAD: 'chrome_upload_file',
   },
 };
 
@@ -107,6 +109,24 @@ export const TOOL_SCHEMAS: Tool[] = [
         },
       },
       required: [],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.SWITCH_TAB,
+    description: 'Switch to a specific browser tab',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabId: {
+          type: 'number',
+          description: 'The ID of the tab to switch to.',
+        },
+        windowId: {
+          type: 'number',
+          description: 'The ID of the window where the tab is located.',
+        },
+      },
+      required: ['tabId'],
     },
   },
   {
@@ -547,6 +567,40 @@ export const TOOL_SCHEMAS: Tool[] = [
         },
       },
       required: ['url'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.FILE_UPLOAD,
+    description: 'Upload files to web forms with file input elements using Chrome DevTools Protocol',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: {
+          type: 'string',
+          description: 'CSS selector for the file input element (input[type="file"])',
+        },
+        filePath: {
+          type: 'string',
+          description: 'Local file path to upload',
+        },
+        fileUrl: {
+          type: 'string',
+          description: 'URL to download file from before uploading',
+        },
+        base64Data: {
+          type: 'string',
+          description: 'Base64 encoded file data to upload',
+        },
+        fileName: {
+          type: 'string',
+          description: 'Optional filename when using base64 or URL (default: "uploaded-file")',
+        },
+        multiple: {
+          type: 'boolean',
+          description: 'Whether the input accepts multiple files (default: false)',
+        },
+      },
+      required: ['selector'],
     },
   },
 ];

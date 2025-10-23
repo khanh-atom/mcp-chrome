@@ -79,7 +79,6 @@ mcp-chrome-bridge register
    - 启用"开发者模式"
    - 点击"加载已解压的扩展程序"，选择 `your/dowloaded/extension/folder`
    - 点击插件图标打开插件，点击连接即可看到mcp的配置
-     
    <img width="475" alt="截屏2025-06-09 15 52 06" src="https://github.com/user-attachments/assets/241e57b8-c55f-41a4-9188-0367293dc5bc" />
 
 ### 在支持MCP协议的客户端中使用
@@ -146,6 +145,7 @@ pnpm list -g mcp-chrome-bridge
 
 - `get_windows_and_tabs` - 列出所有浏览器窗口和标签页
 - `chrome_navigate` - 导航到 URL 并控制视口
+- `chrome_switch_tab` - 切换当前显示的标签页
 - `chrome_close_tabs` - 关闭特定标签页或窗口
 - `chrome_go_back_or_forward` - 浏览器导航控制
 - `chrome_inject_script` - 向网页注入内容脚本
@@ -200,7 +200,6 @@ prompt: [excalidraw-prompt](prompt/excalidraw-prompt.md)
 指令：帮我总结当前页面内容，然后画个图帮我理解
 https://www.youtube.com/watch?v=3fBPdUBWVz0
 
-
 https://github.com/user-attachments/assets/f14f79a6-9390-4821-8296-06d020bcfc07
 
 ### ai先分析图片的内容元素，然后再自动控制excalidraw把图片模仿出来
@@ -217,14 +216,12 @@ prompt: [modify-web-prompt](prompt/modify-web.md)
 指令：帮我修改当前页面的样式，去掉广告
 https://youtu.be/twI6apRKHsk
 
-
 https://github.com/user-attachments/assets/aedbe98d-e90c-4a58-a4a5-d888f7293d8e
 
 ### ai自动帮你捕获网络请求
 
 指令：我想知道小红书的搜索接口是哪个，响应体结构是什么样的
 https://youtu.be/1hHKr7XKqnQ
-
 
 https://github.com/user-attachments/assets/063f44ae-1754-46b6-b141-5988c86e4d96
 
@@ -233,14 +230,12 @@ https://github.com/user-attachments/assets/063f44ae-1754-46b6-b141-5988c86e4d96
 指令：分析一下我近一个月的浏览记录
 https://youtu.be/jf2UZfrR2Vk
 
-
 https://github.com/user-attachments/assets/e7a35118-e50e-4b1c-a790-0878aa2505ab
 
 ### 网页对话
 
 指令：翻译并总结当前网页
 https://youtu.be/FlJKS9UQyC8
-
 
 https://github.com/user-attachments/assets/08aa86aa-7706-4df2-b400-576e2c7fcc7f
 
@@ -263,14 +258,12 @@ https://github.com/user-attachments/assets/25657076-b84b-4459-a72f-90f896f06364
 指令：将当前页面添加到书签中，放到合适的文件夹
 https://youtu.be/R_83arKmFTo
 
-
 https://github.com/user-attachments/assets/73c1ea26-65fb-4b5e-b537-e32fa9bcfa52
 
 ### 自动关闭网页
 
 指令：关闭所有shadcn相关的网页
 https://youtu.be/2wzUT6eNVg4
-
 
 https://github.com/user-attachments/assets/ff160f48-58e0-4c76-a6b0-c4e1f91370c8
 
@@ -309,6 +302,3 @@ https://github.com/user-attachments/assets/ff160f48-58e0-4c76-a6b0-c4e1f91370c8
 拉群的目的是让踩过坑的大佬们互相帮忙解答问题，因本人平时要忙着搬砖，不一定能及时解答
 
 ![IMG_6296](https://github.com/user-attachments/assets/ecd2e084-24d2-4038-b75f-3ab020b55594)
-
-
-

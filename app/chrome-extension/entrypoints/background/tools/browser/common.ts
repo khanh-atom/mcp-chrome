@@ -476,3 +476,58 @@ class GoBackOrForwardTool extends BaseBrowserToolExecutor {
 }
 
 export const goBackOrForwardTool = new GoBackOrForwardTool();
+
+interface SwitchTabToolParams {
+  tabId: number;
+  windowId?: number;
+}
+
+/**
+ * Tool for switching the active tab
+ */
+class SwitchTabTool extends BaseBrowserToolExecutor {
+  name = TOOL_NAMES.BROWSER.SWITCH_TAB;
+
+  async execute(args: SwitchTabToolParams): Promise<ToolResult> {
+    const { tabId, windowId } = args;
+
+    console.log(`Attempting to switch to tab ID: ${tabId} in window ID: ${windowId}`);
+
+    try {
+      if (windowId !== undefined) {
+        await chrome.windows.update(windowId, { focused: true });
+      }
+      await chrome.tabs.update(tabId, { active: true });
+
+      const updatedTab = await chrome.tabs.get(tabId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              message: `Successfully switched to tab ID: ${tabId}`,
+              tabId: updatedTab.id,
+              windowId: updatedTab.windowId,
+              url: updatedTab.url,
+            }),
+          },
+        ],
+        isError: false,
+      };
+    } catch (error) {
+      if (chrome.runtime.lastError) {
+        console.error(`Chrome API Error: ${chrome.runtime.lastError.message}`, error);
+        return createErrorResponse(`Chrome API Error: ${chrome.runtime.lastError.message}`);
+      } else {
+        console.error('Error in SwitchTabTool.execute:', error);
+        return createErrorResponse(
+          `Error switching tab: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+  }
+}
+
+export const switchTabTool = new SwitchTabTool();

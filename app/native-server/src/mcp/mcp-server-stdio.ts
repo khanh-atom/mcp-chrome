@@ -6,6 +6,8 @@ import {
   CallToolRequestSchema,
   CallToolResult,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ListPromptsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { TOOL_SCHEMAS } from 'chrome-mcp-shared';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -40,6 +42,8 @@ export const getStdioMcpServer = () => {
     {
       capabilities: {
         tools: {},
+        resources: {},
+        prompts: {},
       },
     },
   );
@@ -77,6 +81,12 @@ export const setupTools = (server: Server) => {
   server.setRequestHandler(CallToolRequestSchema, async (request) =>
     handleToolCall(request.params.name, request.params.arguments || {}),
   );
+
+  // List resources handler - REQUIRED BY MCP PROTOCOL
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [] }));
+
+  // List prompts handler - REQUIRED BY MCP PROTOCOL
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [] }));
 };
 
 const handleToolCall = async (name: string, args: any): Promise<CallToolResult> => {

@@ -1,4 +1,4 @@
-export { navigateTool, closeTabsTool, goBackOrForwardTool } from './common';
+export { navigateTool, closeTabsTool, goBackOrForwardTool, switchTabTool } from './common';
 export { windowTool } from './window';
 export { vectorSearchTabsContentTool as searchTabsContentTool } from './vector-search';
 export { screenshotTool } from './screenshot';
@@ -13,3 +13,4 @@ export { bookmarkSearchTool, bookmarkAddTool, bookmarkDeleteTool } from './bookm
 export { injectScriptTool, sendCommandToInjectScriptTool } from './inject-script';
 export { consoleTool } from './console';
 export { getCookieTool } from './cookie';
+export { fileUploadTool } from './file-upload';

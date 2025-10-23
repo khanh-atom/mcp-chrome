@@ -12,6 +12,7 @@
 **📖 Documentation**: [English](README.md) | [中文](README_zh.md)
 
 > The project is still in its early stages and is under intensive development. More features, stability improvements, and other enhancements will follow.
+
 ---
 
 ## 🎯 What is Chrome MCP Server?
@@ -147,6 +148,7 @@ Complete tool list: [Complete Tool List](docs/TOOLS.md)
 
 - `get_windows_and_tabs` - List all browser windows and tabs
 - `chrome_navigate` - Navigate to URLs and control viewport
+- `chrome_switch_tab` - Switch the current active tab
 - `chrome_close_tabs` - Close specific tabs or windows
 - `chrome_go_back_or_forward` - Browser navigation control
 - `chrome_inject_script` - Inject content scripts into web pages
@@ -217,7 +219,6 @@ prompt: [modify-web-prompt](prompt/modify-web.md)
 Instruction: Help me modify the current page's style and remove advertisements.
 https://youtu.be/twI6apRKHsk
 
-
 https://github.com/user-attachments/assets/69cb561c-2e1e-4665-9411-4a3185f9643e
 
 ### AI automatically captures network requests for you
@@ -226,7 +227,6 @@ query: I want to know what the search API for Xiaohongshu is and what the respon
 
 https://youtu.be/1hHKr7XKqnQ
 
-
 https://github.com/user-attachments/assets/063f44ae-1754-46b6-b141-5988c86e4d96
 
 ### AI helps analyze your browsing history
@@ -234,7 +234,6 @@ https://github.com/user-attachments/assets/063f44ae-1754-46b6-b141-5988c86e4d96
 query: Analyze my browsing history from the past month
 
 https://youtu.be/jf2UZfrR2Vk
-
 
 https://github.com/user-attachments/assets/e7a35118-e50e-4b1c-a790-0878aa2505ab
 
@@ -250,14 +249,12 @@ https://github.com/user-attachments/assets/08aa86aa-7706-4df2-b400-576e2c7fcc7f
 query: Take a screenshot of Hugging Face's homepage
 https://youtu.be/7ycK6iksWi4
 
-
 https://github.com/user-attachments/assets/b081e41b-6309-40d6-885b-0da01691b12e
 
 ### AI automatically takes screenshots for you (element screenshots)
 
 query: Capture the icon from Hugging Face's homepage
 https://youtu.be/ev8VivANIrk
-
 
 https://github.com/user-attachments/assets/25657076-b84b-4459-a72f-90f896f06364
 
@@ -267,7 +264,6 @@ query: Add the current page to bookmarks and put it in an appropriate folder
 
 https://youtu.be/R_83arKmFTo
 
-
 https://github.com/user-attachments/assets/73c1ea26-65fb-4b5e-b537-e32fa9bcfa52
 
 ### Automatically close web pages
@@ -275,7 +271,6 @@ https://github.com/user-attachments/assets/73c1ea26-65fb-4b5e-b537-e32fa9bcfa52
 query: Close all shadcn-related web pages
 
 https://youtu.be/2wzUT6eNVg4
-
 
 https://github.com/user-attachments/assets/ff160f48-58e0-4c76-a6b0-c4e1f91370c8
 
