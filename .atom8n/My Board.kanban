@@ -1,0 +1,36 @@
+{
+  "readme": "To open this file inside VSCode, you need to install VSCode extension \"Kanban atom8n\"",
+  "columns": [
+    {
+      "id": "col_x9l30q_mh2u29nh",
+      "title": "To Do",
+      "order": 0,
+      "boardId": "",
+      "tasks": [
+        {
+          "id": "task_10wobx_mh2u6rgp",
+          "title": "Add tool get token",
+          "description": "beside cookie tool, get **x-csrf-token** \n\nSteps:\n\n1. Enable network capture\n2. Goto <https://episerver.zendesk.com/agent/search/1>\n3. Capture the request <https://episerver.zendesk.com/api/graphql>\n4. Get its **x-csrf-token** value from request header",
+          "priority": "MEDIUM",
+          "order": 0,
+          "columnId": "col_x9l30q_mh2u29nh",
+          "assigneeId": null
+        }
+      ]
+    },
+    {
+      "id": "col_dmru2k_mh2u29nh",
+      "title": "In Progress",
+      "order": 1,
+      "boardId": "",
+      "tasks": []
+    },
+    {
+      "id": "col_j4m4kk_mh2u29nh",
+      "title": "Done",
+      "order": 2,
+      "boardId": "",
+      "tasks": []
+    }
+  ]
+}
