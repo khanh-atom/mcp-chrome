@@ -1,0 +1,31 @@
+{
+  "readme": "To open this file inside VSCode, you need to install VSCode extension \"Kanban atom8n\"",
+  "columns": [
+    {
+      "id": "col_2adgxi_mi4vi5pa",
+      "title": "Setup",
+      "order": 0,
+      "boardId": "",
+      "tasks": [
+        {
+          "id": "task_jg9bej_mi4vj726",
+          "title": "Native Server: build and run register for native messge",
+          "description": "npx pnpm run build && npm run register:dev\n\n![](.atom8n/assets/mi4vk87e-ys26gxkx.png)",
+          "priority": "MEDIUM",
+          "order": 0,
+          "columnId": "col_2adgxi_mi4vi5pa",
+          "assigneeId": null
+        },
+        {
+          "id": "task_7vohjd_mi4vjvrl",
+          "title": "Add allow list for chrome extension",
+          "description": "![](.atom8n/assets/mi4vm9tg-9akdfhr8.png)",
+          "priority": "MEDIUM",
+          "order": 1,
+          "columnId": "col_2adgxi_mi4vi5pa",
+          "assigneeId": null
+        }
+      ]
+    }
+  ]
+}
