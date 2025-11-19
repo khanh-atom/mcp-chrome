@@ -2,7 +2,6 @@ import { createErrorResponse, ToolResult } from '@/common/tool-handler';
 import { BaseBrowserToolExecutor } from '../base-browser';
 import { TOOL_NAMES } from 'chrome-mcp-shared';
 import { networkCaptureStartTool } from './network-capture-web-request';
-import { logMessage } from '@/common/logger';
 
 interface GetTokenToolParams {
   matchUrl?: string;
@@ -28,23 +27,16 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     } = args || ({} as any);
 
     if (typeof matchUrl !== 'string') {
-      void logMessage('warn', `[get_token] Invalid matchUrl parameter: ${matchUrl}`);
       return createErrorResponse('Parameter "matchUrl" must be a string when provided');
     }
 
     const targetTabId = await this.resolveTabId(tabId);
     if (!targetTabId) {
-      void logMessage('error', '[get_token] No active tab found while resolving tabId');
       return createErrorResponse('No active tab found');
     }
 
     let captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
     if (!captureInfo) {
-      void logMessage(
-        'info',
-        `[get_token] No active capture for tab ${targetTabId}. Attempting automatic navigation & capture start.`,
-      );
-
       const autoStarted = await this.navigateAndStartCapture(targetTabId, url);
 
       if (!autoStarted) {
@@ -55,10 +47,6 @@ class GetTokenTool extends BaseBrowserToolExecutor {
 
       captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
       if (!captureInfo) {
-        void logMessage(
-          'warn',
-          `[get_token] Capture data still missing after auto start for tab ${targetTabId}`,
-        );
         return createErrorResponse(
           'Capture did not initialize properly. Please retry after verifying network capture is running.',
         );
@@ -73,10 +61,6 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     });
 
     if (!matchingRequest) {
-      void logMessage(
-        'info',
-        `[get_token] Timed out waiting for matching request on tab ${targetTabId}`,
-      );
       return {
         content: [
           {
@@ -103,10 +87,6 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     const value = this.findHeaderCaseInsensitive(headers, headerKey);
 
     if (value) {
-      void logMessage(
-        'info',
-        `[get_token] Found header ${headerName} on ${matchingRequest.method} ${matchingRequest.url} (tab ${targetTabId})`,
-      );
       return {
         content: [
           {
@@ -125,10 +105,6 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       };
     }
 
-    void logMessage(
-      'info',
-      `[get_token] Header ${headerName} not found on matched request for tab ${targetTabId}`,
-    );
     return {
       content: [
         {
@@ -168,35 +144,16 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     try {
       await chrome.tabs.update(tabId, { url: targetUrl, active: true });
       await this.waitForPageLoad(tabId, targetUrl, 15000);
-      await logMessage(
-        'info',
-        `[get_token] Navigated tab ${tabId} to ${targetUrl}, starting capture.`,
-      );
-
       const startResult = await networkCaptureStartTool.startCaptureOnExistingTab(tabId, {
         includeStatic: false,
       });
 
       if (!startResult.success) {
-        await logMessage(
-          'error',
-          `[get_token] Failed to start capture for tab ${tabId}: ${startResult.message || 'unknown error'}`,
-        );
         return false;
       }
 
-      await logMessage(
-        'info',
-        `[get_token] Capture started for tab ${tabId}. Awaiting requests...`,
-      );
       return true;
     } catch (error) {
-      await logMessage(
-        'error',
-        `[get_token] navigateAndStartCapture failed for tab ${tabId}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
       return false;
     }
   }
