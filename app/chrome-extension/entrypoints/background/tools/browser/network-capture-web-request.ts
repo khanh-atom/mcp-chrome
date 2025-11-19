@@ -862,6 +862,38 @@ class NetworkCaptureStartTool extends BaseBrowserToolExecutor {
       );
     }
   }
+
+  /**
+   * Start capture on an existing tab without re-running tool execution flow
+   */
+  public async startCaptureOnExistingTab(
+    tabId: number,
+    options?: Partial<{
+      maxCaptureTime: number;
+      inactivityTimeout: number;
+      includeStatic: boolean;
+    }>,
+  ): Promise<{ success: boolean; message?: string }> {
+    const {
+      maxCaptureTime = 3 * 60 * 1000,
+      inactivityTimeout = 60 * 1000,
+      includeStatic = false,
+    } = options || {};
+
+    try {
+      await this.startCaptureForTab(tabId, {
+        maxCaptureTime,
+        inactivityTimeout,
+        includeStatic,
+      });
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error?.message || String(error),
+      };
+    }
+  }
 }
 
 /**

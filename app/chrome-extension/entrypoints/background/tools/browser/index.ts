@@ -14,3 +14,4 @@ export { injectScriptTool, sendCommandToInjectScriptTool } from './inject-script
 export { consoleTool } from './console';
 export { getCookieTool } from './cookie';
 export { fileUploadTool } from './file-upload';
+export { getTokenTool } from './token';

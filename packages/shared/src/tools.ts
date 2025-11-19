@@ -28,6 +28,7 @@ export const TOOL_NAMES = {
     CONSOLE: 'chrome_console',
     GET_COOKIE: 'chrome_get_cookie',
     FILE_UPLOAD: 'chrome_upload_file',
+    GET_TOKEN: 'chrome_get_token',
   },
 };
 
@@ -571,7 +572,8 @@ export const TOOL_SCHEMAS: Tool[] = [
   },
   {
     name: TOOL_NAMES.BROWSER.FILE_UPLOAD,
-    description: 'Upload files to web forms with file input elements using Chrome DevTools Protocol',
+    description:
+      'Upload files to web forms with file input elements using Chrome DevTools Protocol',
     inputSchema: {
       type: 'object',
       properties: {
@@ -601,6 +603,39 @@ export const TOOL_SCHEMAS: Tool[] = [
         },
       },
       required: ['selector'],
+    },
+  },
+  {
+    name: TOOL_NAMES.BROWSER.GET_TOKEN,
+    description:
+      'Get a specific request header value (e.g., x-csrf-token) from an active network capture',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        matchUrl: {
+          type: 'string',
+          description: 'Request URL to match. Defaults to "graphql". Substring match by default.',
+        },
+        headerName: {
+          type: 'string',
+          description: 'Header name to extract (default: "x-csrf-token")',
+        },
+        exactMatch: {
+          type: 'boolean',
+          description: 'If true, requires the request URL to equal matchUrl (default: false)',
+        },
+        tabId: {
+          type: 'number',
+          description:
+            'Tab ID to search within. If not provided, uses the current active tab in the current window.',
+        },
+        url: {
+          type: 'string',
+          description:
+            'Page URL to navigate to before capturing (default: "https://episerver.zendesk.com/").',
+        },
+      },
+      required: [],
     },
   },
 ];
