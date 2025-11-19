@@ -30,14 +30,46 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       return createErrorResponse('Parameter "matchUrl" must be a string when provided');
     }
 
-    const targetTabId = await this.resolveTabId(tabId);
-    if (!targetTabId) {
-      return createErrorResponse('No active tab found');
+    // Step 1: Create a new tab
+    let targetTabId: number;
+    if (tabId && Number.isFinite(tabId)) {
+      targetTabId = tabId;
+    } else {
+      const newTab = await chrome.tabs.create({ url, active: true });
+      if (!newTab.id) {
+        return createErrorResponse('Failed to create new tab');
+      }
+      targetTabId = newTab.id;
+    }
+
+    // Step 2: Close other tabs in the current window
+    try {
+      const currentWindow = await chrome.windows.getCurrent();
+      if (currentWindow.id) {
+        const allTabs = await chrome.tabs.query({ windowId: currentWindow.id });
+        const tabsToClose = allTabs.filter((tab) => tab.id && tab.id !== targetTabId);
+        if (tabsToClose.length > 0) {
+          const tabIdsToClose = tabsToClose.map((tab) => tab.id!);
+          await chrome.tabs.remove(tabIdsToClose);
+        }
+      }
+    } catch (error) {
+      // Log error but continue - closing tabs is not critical
+      console.error('Error closing other tabs:', error);
+    }
+
+    // Wait for the new tab to load if it was just created
+    if (!tabId || !Number.isFinite(tabId)) {
+      await this.waitForPageLoad(targetTabId, url, 15000);
+    } else {
+      // If using existing tab, navigate to URL
+      await chrome.tabs.update(targetTabId, { url, active: true });
+      await this.waitForPageLoad(targetTabId, url, 15000);
     }
 
     let captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
     if (!captureInfo) {
-      const autoStarted = await this.navigateAndStartCapture(targetTabId, url);
+      const autoStarted = await this.startCapture(targetTabId);
 
       if (!autoStarted) {
         return createErrorResponse(
@@ -122,12 +154,6 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     };
   }
 
-  private async resolveTabId(explicitTabId?: number): Promise<number | null> {
-    if (explicitTabId && Number.isFinite(explicitTabId)) return explicitTabId;
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    return tabs[0]?.id ?? null;
-  }
-
   private findHeaderCaseInsensitive(
     headers: Record<string, string>,
     targetLower: string,
@@ -140,10 +166,8 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     return null;
   }
 
-  private async navigateAndStartCapture(tabId: number, targetUrl: string): Promise<boolean> {
+  private async startCapture(tabId: number): Promise<boolean> {
     try {
-      await chrome.tabs.update(tabId, { url: targetUrl, active: true });
-      await this.waitForPageLoad(tabId, targetUrl, 15000);
       const startResult = await networkCaptureStartTool.startCaptureOnExistingTab(tabId, {
         includeStatic: false,
       });
