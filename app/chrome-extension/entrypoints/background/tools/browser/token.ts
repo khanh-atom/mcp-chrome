@@ -12,7 +12,7 @@ interface GetTokenToolParams {
 }
 
 const DEFAULT_NAVIGATION_URL = 'https://episerver.zendesk.com/agent/search/1';
-const DEFAULT_MATCH_URL = 'graphql';
+const DEFAULT_MATCH_URL = 'api/graphql';
 
 class GetTokenTool extends BaseBrowserToolExecutor {
   name = TOOL_NAMES.BROWSER.GET_TOKEN;

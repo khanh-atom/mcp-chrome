@@ -619,7 +619,8 @@ export const TOOL_SCHEMAS: Tool[] = [
       properties: {
         matchUrl: {
           type: 'string',
-          description: 'Request URL to match. Defaults to "graphql". Substring match by default.',
+          description:
+            'Request URL to match. Defaults to "api/graphql". Substring match by default.',
         },
         headerName: {
           type: 'string',
