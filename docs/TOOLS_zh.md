@@ -295,16 +295,19 @@
 
 **参数**：
 
-- `format` (字符串，可选)："html" 或 "text"（默认："text"）
-- `selector` (字符串，可选)：特定元素的 CSS 选择器
-- `tabId` (数字，可选)：特定标签页 ID（默认：活动标签页）
+- `url` (字符串，可选)：要获取内容的 URL。如果未提供，则使用当前活动标签页
+- `htmlContent` (布尔值，可选)：获取页面的可见 HTML 内容。如果为 true，将忽略 textContent（默认：false）
+- `textContent` (布尔值，可选)：获取页面的可见文本内容（包含元数据）。如果 htmlContent 为 true，则忽略此参数（默认：true）
+- `selector` (字符串，可选)：用于获取特定元素内容的 CSS 选择器。如果提供，仅返回该元素的内容
+- `delay` (数字，可选)：获取内容前的延迟时间（毫秒）。允许页面完全加载（默认：3000）
 
 **示例**：
 
 ```json
 {
-  "format": "text",
-  "selector": ".article-content"
+  "textContent": true,
+  "selector": ".article-content",
+  "delay": 3000
 }
 ```
 

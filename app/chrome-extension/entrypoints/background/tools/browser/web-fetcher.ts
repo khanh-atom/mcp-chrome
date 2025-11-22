@@ -8,6 +8,7 @@ interface WebFetcherToolParams {
   textContent?: boolean; // get the visible text content of the current page. default: true
   url?: string; // optional URL to fetch content from (if not provided, uses active tab)
   selector?: string; // optional CSS selector to get content from a specific element
+  delay?: number; // delay in milliseconds before fetching content. default: 5000
 }
 
 class WebFetcherTool extends BaseBrowserToolExecutor {
@@ -22,12 +23,14 @@ class WebFetcherTool extends BaseBrowserToolExecutor {
     const textContent = htmlContent ? false : args.textContent !== false; // Default is true, unless htmlContent is true or textContent is explicitly set to false
     const url = args.url;
     const selector = args.selector;
+    const delay = args.delay ?? 5000; // Default delay is 5000ms
 
     console.log(`Starting web fetcher with options:`, {
       htmlContent,
       textContent,
       url,
       selector,
+      delay,
     });
 
     try {
@@ -57,8 +60,8 @@ class WebFetcherTool extends BaseBrowserToolExecutor {
           tab = await chrome.tabs.create({ url, active: true });
 
           // Wait for page to load
-          console.log('Waiting for page to load...');
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          console.log(`Waiting for page to load (${delay}ms)...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       } else {
         // Use active tab
@@ -75,6 +78,12 @@ class WebFetcherTool extends BaseBrowserToolExecutor {
 
       // Make sure tab is active
       await chrome.tabs.update(tab.id, { active: true });
+
+      // Wait for delay before fetching content (allows page to fully load)
+      if (delay > 0) {
+        console.log(`Waiting ${delay}ms before fetching content...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
 
       // Prepare result object
       const result: any = {

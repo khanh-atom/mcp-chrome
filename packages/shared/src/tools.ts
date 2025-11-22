@@ -170,6 +170,11 @@ export const TOOL_SCHEMAS: Tool[] = [
           description:
             'CSS selector to get content from a specific element. If provided, only content from this element will be returned',
         },
+        delay: {
+          type: 'number',
+          description:
+            'Delay in milliseconds before fetching content. Allows page to fully load (default: 5000)',
+        },
       },
       required: [],
     },

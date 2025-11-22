@@ -295,16 +295,19 @@ Extract HTML or text content from web pages.
 
 **Parameters**:
 
-- `format` (string, optional): "html" or "text" (default: "text")
-- `selector` (string, optional): CSS selector for specific elements
-- `tabId` (number, optional): Specific tab ID (default: active tab)
+- `url` (string, optional): URL to fetch content from. If not provided, uses the current active tab
+- `htmlContent` (boolean, optional): Get the visible HTML content of the page. If true, textContent will be ignored (default: false)
+- `textContent` (boolean, optional): Get the visible text content of the page with metadata. Ignored if htmlContent is true (default: true)
+- `selector` (string, optional): CSS selector to get content from a specific element. If provided, only content from this element will be returned
+- `delay` (number, optional): Delay in milliseconds before fetching content. Allows page to fully load (default: 3000)
 
 **Example**:
 
 ```json
 {
-  "format": "text",
-  "selector": ".article-content"
+  "textContent": true,
+  "selector": ".article-content",
+  "delay": 3000
 }
 ```
 

@@ -8,9 +8,9 @@
       "boardId": "",
       "tasks": [
         {
-          "id": "task_10wobx_mh2u6rgp",
-          "title": "Add tool get token",
-          "description": "beside cookie tool, get **x-csrf-token** \n\nSteps:\n\n1. Enable network capture\n2. Goto <https://episerver.zendesk.com/agent/search/1>\n3. Capture the request <https://episerver.zendesk.com/api/graphql>\n4. Get its **x-csrf-token** value from request header",
+          "id": "task_lw80uf_miaicla5",
+          "title": "chrome_get_web_content improvement",
+          "description": "add delay param to the tool\n\ndefault is 3000 ms",
           "priority": "MEDIUM",
           "order": 0,
           "columnId": "col_x9l30q_mh2u29nh",
@@ -30,7 +30,17 @@
       "title": "Done",
       "order": 2,
       "boardId": "",
-      "tasks": []
+      "tasks": [
+        {
+          "id": "task_10wobx_mh2u6rgp",
+          "title": "Add tool get token",
+          "description": "beside cookie tool, get **x-csrf-token** \n\nSteps:\n\n1. Enable network capture\n2. Goto <https://episerver.zendesk.com/agent/search/1>\n3. Capture the request <https://episerver.zendesk.com/api/graphql>\n4. Get its **x-csrf-token** value from request header",
+          "priority": "MEDIUM",
+          "order": 0,
+          "columnId": "col_j4m4kk_mh2u29nh",
+          "assigneeId": null
+        }
+      ]
     }
   ]
 }
