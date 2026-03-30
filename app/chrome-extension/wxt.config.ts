@@ -77,10 +77,6 @@ export default defineConfig({
             src: ['workers/*'],
             dest: 'workers',
           },
-          {
-            src: '_locales/**/*',
-            dest: '_locales',
-          },
         ],
       }) as any,
     ],
