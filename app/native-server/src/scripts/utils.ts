@@ -199,6 +199,8 @@ export async function createManifestContent(): Promise<any> {
     allowed_origins: [
       `chrome-extension://${EXTENSION_ID}/`,
       `chrome-extension://eclgjjmkfenkccblpinoalbodilbbgmg/`,
+      `chrome-extension://dhjdapbddpgindkokanhgflhbaflhihc/`,
+      `chrome-extension://kgdefpfnhhajikabccichbgmcpgbaeag/`,
     ],
   };
 }
