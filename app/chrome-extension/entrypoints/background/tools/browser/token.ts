@@ -26,7 +26,16 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       url = DEFAULT_NAVIGATION_URL,
     } = args || ({} as any);
 
+    console.log('[token] execute', {
+      matchUrl,
+      headerName,
+      exactMatch,
+      tabId,
+      url,
+    });
+
     if (typeof matchUrl !== 'string') {
+      console.error('[token] invalid matchUrl type', { matchUrlType: typeof matchUrl });
       return createErrorResponse('Parameter "matchUrl" must be a string when provided');
     }
 
@@ -37,10 +46,13 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     } else {
       const newTab = await chrome.tabs.create({ url, active: true });
       if (!newTab.id) {
+        console.error('[token] failed to create new tab');
         return createErrorResponse('Failed to create new tab');
       }
       targetTabId = newTab.id;
     }
+
+    console.log('[token] using tab', { targetTabId });
 
     // Step 2: Close other tabs in the current window
     try {
@@ -55,23 +67,27 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       }
     } catch (error) {
       // Log error but continue - closing tabs is not critical
-      console.error('Error closing other tabs:', error);
+      console.error('[token] error closing other tabs', error);
     }
 
     // Wait for the new tab to load if it was just created
     if (!tabId || !Number.isFinite(tabId)) {
+      console.log('[token] waiting for initial page load', { targetTabId, url });
       await this.waitForPageLoad(targetTabId, url, 15000);
     } else {
       // If using existing tab, navigate to URL
+      console.log('[token] navigating existing tab and waiting', { targetTabId, url });
       await chrome.tabs.update(targetTabId, { url, active: true });
       await this.waitForPageLoad(targetTabId, url, 15000);
     }
 
     let captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
     if (!captureInfo) {
+      console.log('[token] capture not running; attempting auto-start', { targetTabId });
       const autoStarted = await this.startCapture(targetTabId);
 
       if (!autoStarted) {
+        console.error('[token] auto-start capture failed', { targetTabId });
         return createErrorResponse(
           'Failed to automatically navigate and start capture. Please start chrome_network_capture_start manually and retry.',
         );
@@ -79,11 +95,17 @@ class GetTokenTool extends BaseBrowserToolExecutor {
 
       captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
       if (!captureInfo) {
+        console.error('[token] capture start returned but no captureInfo found', { targetTabId });
         return createErrorResponse(
           'Capture did not initialize properly. Please retry after verifying network capture is running.',
         );
       }
     }
+
+    console.log('[token] capture active', {
+      targetTabId,
+      requestCount: Object.keys(captureInfo.requests || {}).length,
+    });
 
     const matchingRequest = await this.waitForMatchingRequest({
       tabId: targetTabId,
@@ -93,6 +115,12 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     });
 
     if (!matchingRequest) {
+      console.error('[token] timed out waiting for matching request', {
+        targetTabId,
+        matchUrl,
+        exactMatch,
+        headerName,
+      });
       return {
         content: [
           {
@@ -119,6 +147,11 @@ class GetTokenTool extends BaseBrowserToolExecutor {
     const value = this.findHeaderCaseInsensitive(headers, headerKey);
 
     if (value) {
+      console.log('[token] header found', {
+        headerName,
+        url: (matchingRequest as any).url,
+        method: (matchingRequest as any).method,
+      });
       return {
         content: [
           {
@@ -137,6 +170,14 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       };
     }
 
+    console.error('[token] header not found on captured request', {
+      headerName,
+      matchUrl,
+      exactMatch,
+      url: (matchingRequest as any)?.url,
+      method: (matchingRequest as any)?.method,
+      availableHeaderNames: Object.keys(headers || {}),
+    });
     return {
       content: [
         {
@@ -173,11 +214,16 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       });
 
       if (!startResult.success) {
+        console.error('[token] startCaptureOnExistingTab reported failure', {
+          tabId,
+          startResult,
+        });
         return false;
       }
 
       return true;
     } catch (error) {
+      console.error('[token] error starting capture', { tabId }, error);
       return false;
     }
   }
