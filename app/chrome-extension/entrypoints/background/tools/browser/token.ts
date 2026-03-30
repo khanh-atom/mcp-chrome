@@ -46,6 +46,7 @@ class GetTokenTool extends BaseBrowserToolExecutor {
         const existing = this.findHeaderInCapture(targetTabId, matchUrl, exactMatch, headerName);
         if (existing) {
           console.log('[token] header found in existing capture data', { headerName });
+          await this.stopCapture(targetTabId);
           return this.buildSuccessResponse(existing.value, headerName, existing.request);
         }
         // No match — reload to trigger fresh requests
@@ -74,6 +75,7 @@ class GetTokenTool extends BaseBrowserToolExecutor {
           url: result.request.url,
           method: result.request.method,
         });
+        await this.stopCapture(targetTabId);
         return this.buildSuccessResponse(result.value, headerName, result.request);
       }
 
@@ -97,6 +99,7 @@ class GetTokenTool extends BaseBrowserToolExecutor {
           url: retryResult.request.url,
           method: retryResult.request.method,
         });
+        await this.stopCapture(targetTabId);
         return this.buildSuccessResponse(retryResult.value, headerName, retryResult.request);
       }
 
@@ -224,14 +227,19 @@ class GetTokenTool extends BaseBrowserToolExecutor {
   }
 
   private async restartCapture(tabId: number): Promise<void> {
-    if (networkCaptureStartTool.captureData.has(tabId)) {
-      await networkCaptureStartTool.stopCapture(tabId);
-    }
+    await this.stopCapture(tabId);
     const result = await networkCaptureStartTool.startCaptureOnExistingTab(tabId, {
       includeStatic: false,
     });
     if (!result.success) {
       throw new Error(`Failed to restart network capture: ${result.message}`);
+    }
+  }
+
+  private async stopCapture(tabId: number): Promise<void> {
+    if (networkCaptureStartTool.captureData.has(tabId)) {
+      console.log('[token] stopping capture', { tabId });
+      await networkCaptureStartTool.stopCapture(tabId);
     }
   }
 
