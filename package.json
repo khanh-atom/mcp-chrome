@@ -9,7 +9,7 @@
     "build:native": "npx pnpm --filter mcp-chrome-bridge build",
     "build:extension": "npx pnpm --filter chrome-mcp-server build",
     "build:wasm": "npx pnpm --filter @chrome-mcp/wasm-simd build && npx pnpm run copy:wasm",
-    "build": "npx pnpm -r --filter ./packages/shared --filter \"./app/*\" build",
+    "build": "npx pnpm -r --filter ./packages/shared --filter \"./app/*\" --filter \"!@chrome-mcp/wasm-simd\" build",
     "copy:wasm": "cp ./packages/wasm-simd/pkg/simd_math.js ./packages/wasm-simd/pkg/simd_math_bg.wasm ./app/chrome-extension/workers/",
     "dev:shared": "npx pnpm --filter chrome-mcp-shared dev",
     "dev:native": "npx pnpm --filter mcp-chrome-bridge dev",

@@ -8,10 +8,10 @@
     "pkg/"
   ],
   "scripts": {
-    "build": "wasm-pack build --target web --out-dir pkg --release",
-    "build:dev": "wasm-pack build --target web --out-dir pkg --dev",
+    "build": "pnpm dlx wasm-pack build --target web --out-dir pkg --release",
+    "build:dev": "pnpm dlx wasm-pack build --target web --out-dir pkg --dev",
     "clean": "rimraf pkg/",
-    "test": "wasm-pack test --headless --firefox"
+    "test": "pnpm dlx wasm-pack test --headless --firefox"
   },
   "keywords": [
     "wasm",
