@@ -26,101 +26,87 @@ class GetTokenTool extends BaseBrowserToolExecutor {
       url = DEFAULT_NAVIGATION_URL,
     } = args || ({} as any);
 
-    console.log('[token] execute', {
-      matchUrl,
-      headerName,
-      exactMatch,
-      tabId,
-      url,
-    });
+    console.log('[token] execute', { matchUrl, headerName, exactMatch, tabId, url });
 
     if (typeof matchUrl !== 'string') {
       console.error('[token] invalid matchUrl type', { matchUrlType: typeof matchUrl });
       return createErrorResponse('Parameter "matchUrl" must be a string when provided');
     }
 
-    // Step 1: Create a new tab
-    let targetTabId: number;
-    if (tabId && Number.isFinite(tabId)) {
-      targetTabId = tabId;
-    } else {
-      const newTab = await chrome.tabs.create({ url, active: true });
-      if (!newTab.id) {
-        console.error('[token] failed to create new tab');
-        return createErrorResponse('Failed to create new tab');
-      }
-      targetTabId = newTab.id;
-    }
-
-    console.log('[token] using tab', { targetTabId });
-
-    // Step 2: Close other tabs in the current window
     try {
-      const currentWindow = await chrome.windows.getCurrent();
-      if (currentWindow.id) {
-        const allTabs = await chrome.tabs.query({ windowId: currentWindow.id });
-        const tabsToClose = allTabs.filter((tab) => tab.id && tab.id !== targetTabId);
-        if (tabsToClose.length > 0) {
-          const tabIdsToClose = tabsToClose.map((tab) => tab.id!);
-          await chrome.tabs.remove(tabIdsToClose);
+      // Step 1: Resolve or create the target tab
+      const { targetTabId, needsNavigation } = await this.resolveTab(tabId, url);
+
+      // Step 2: Start capture BEFORE navigation so we don't miss early requests
+      await this.ensureCaptureRunning(targetTabId);
+      console.log('[token] capture ready', { targetTabId, needsNavigation });
+
+      // Step 3: If already on the right page, check existing capture data first
+      if (!needsNavigation) {
+        const existing = this.findHeaderInCapture(targetTabId, matchUrl, exactMatch, headerName);
+        if (existing) {
+          console.log('[token] header found in existing capture data', { headerName });
+          return this.buildSuccessResponse(existing.value, headerName, existing.request);
         }
+        // No match — reload to trigger fresh requests
+        console.log('[token] no match in existing data, reloading page', { targetTabId });
+        await chrome.tabs.reload(targetTabId);
+      } else {
+        // Navigate to trigger network requests (capture is already listening)
+        console.log('[token] navigating to target URL', { targetTabId, url });
+        await chrome.tabs.update(targetTabId, { url, active: true });
       }
-    } catch (error) {
-      // Log error but continue - closing tabs is not critical
-      console.error('[token] error closing other tabs', error);
-    }
 
-    // Wait for the new tab to load if it was just created
-    if (!tabId || !Number.isFinite(tabId)) {
-      console.log('[token] waiting for initial page load', { targetTabId, url });
       await this.waitForPageLoad(targetTabId, url, 15000);
-    } else {
-      // If using existing tab, navigate to URL
-      console.log('[token] navigating existing tab and waiting', { targetTabId, url });
-      await chrome.tabs.update(targetTabId, { url, active: true });
+
+      // Step 4: Wait for header to appear in captured requests
+      const result = await this.waitForHeader({
+        tabId: targetTabId,
+        matchUrl,
+        exactMatch,
+        headerName,
+        timeoutMs: 15000,
+      });
+
+      if (result) {
+        console.log('[token] header found', {
+          headerName,
+          url: result.request.url,
+          method: result.request.method,
+        });
+        return this.buildSuccessResponse(result.value, headerName, result.request);
+      }
+
+      // Step 5: Retry — restart capture cleanly and reload the page
+      console.log('[token] first attempt timed out, retrying with fresh capture', { targetTabId });
+      await this.restartCapture(targetTabId);
+      await chrome.tabs.reload(targetTabId);
       await this.waitForPageLoad(targetTabId, url, 15000);
-    }
 
-    let captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
-    if (!captureInfo) {
-      console.log('[token] capture not running; attempting auto-start', { targetTabId });
-      const autoStarted = await this.startCapture(targetTabId);
+      const retryResult = await this.waitForHeader({
+        tabId: targetTabId,
+        matchUrl,
+        exactMatch,
+        headerName,
+        timeoutMs: 15000,
+      });
 
-      if (!autoStarted) {
-        console.error('[token] auto-start capture failed', { targetTabId });
-        return createErrorResponse(
-          'Failed to automatically navigate and start capture. Please start chrome_network_capture_start manually and retry.',
-        );
+      if (retryResult) {
+        console.log('[token] header found on retry', {
+          headerName,
+          url: retryResult.request.url,
+          method: retryResult.request.method,
+        });
+        return this.buildSuccessResponse(retryResult.value, headerName, retryResult.request);
       }
 
-      captureInfo = networkCaptureStartTool.captureData.get(targetTabId);
-      if (!captureInfo) {
-        console.error('[token] capture start returned but no captureInfo found', { targetTabId });
-        return createErrorResponse(
-          'Capture did not initialize properly. Please retry after verifying network capture is running.',
-        );
-      }
-    }
-
-    console.log('[token] capture active', {
-      targetTabId,
-      requestCount: Object.keys(captureInfo.requests || {}).length,
-    });
-
-    const matchingRequest = await this.waitForMatchingRequest({
-      tabId: targetTabId,
-      matchUrl,
-      exactMatch,
-      timeoutMs: 10000,
-    });
-
-    if (!matchingRequest) {
-      console.error('[token] timed out waiting for matching request', {
+      console.error('[token] failed to find header after retry', {
         targetTabId,
         matchUrl,
         exactMatch,
         headerName,
       });
+
       return {
         content: [
           {
@@ -128,7 +114,7 @@ class GetTokenTool extends BaseBrowserToolExecutor {
             text: JSON.stringify({
               success: false,
               message:
-                'Timed out waiting for the GraphQL request to be captured automatically. Please ensure the page triggers the request.',
+                'Timed out waiting for the matching request after retry. Ensure the page triggers the expected request.',
               headerName,
               matchUrl,
               exactMatch,
@@ -137,141 +123,227 @@ class GetTokenTool extends BaseBrowserToolExecutor {
         ],
         isError: true,
       };
+    } catch (error: any) {
+      console.error('[token] unexpected error', error);
+      return createErrorResponse(`Token extraction failed: ${error.message || String(error)}`);
+    }
+  }
+
+  // ─── Tab resolution ───────────────────────────────────────────────────────────
+
+  private async resolveTab(
+    tabId: number | undefined,
+    url: string,
+  ): Promise<{ targetTabId: number; needsNavigation: boolean }> {
+    // Caller provided an explicit tabId
+    if (tabId && Number.isFinite(tabId)) {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        const onSamePage = this.isSamePageUrl(tab.url || '', url);
+        console.log('[token] using provided tab', {
+          targetTabId: tabId,
+          currentUrl: tab.url,
+          needsNavigation: !onSamePage,
+        });
+        return { targetTabId: tabId, needsNavigation: !onSamePage };
+      } catch {
+        console.warn('[token] provided tabId not found, creating new tab', { tabId });
+      }
     }
 
-    const headerKey = headerName.toLowerCase();
-    const headers =
-      (matchingRequest as any).requestHeaders ||
-      (matchingRequest as any).specificRequestHeaders ||
-      {};
-    const value = this.findHeaderCaseInsensitive(headers, headerKey);
-
-    if (value) {
-      console.log('[token] header found', {
-        headerName,
-        url: (matchingRequest as any).url,
-        method: (matchingRequest as any).method,
+    // Try to find an existing tab on the same origin to avoid tab proliferation
+    const existingTab = await this.findTabByOrigin(url);
+    if (existingTab?.id) {
+      await chrome.tabs.update(existingTab.id, { active: true });
+      const onSamePage = this.isSamePageUrl(existingTab.url || '', url);
+      console.log('[token] reusing existing tab', {
+        targetTabId: existingTab.id,
+        currentUrl: existingTab.url,
+        needsNavigation: !onSamePage,
       });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              token: value,
-              headerName,
-              url: matchingRequest.url,
-              method: matchingRequest.method,
-              requestTime: matchingRequest.requestTime,
-            }),
-          },
-        ],
-        isError: false,
-      };
+      return { targetTabId: existingTab.id, needsNavigation: !onSamePage };
     }
 
-    console.error('[token] header not found on captured request', {
-      headerName,
-      matchUrl,
-      exactMatch,
-      url: (matchingRequest as any)?.url,
-      method: (matchingRequest as any)?.method,
-      availableHeaderNames: Object.keys(headers || {}),
+    // Create a new tab at about:blank so capture can attach before any navigation
+    const newTab = await chrome.tabs.create({ url: 'about:blank', active: true });
+    if (!newTab.id) {
+      throw new Error('Failed to create new tab');
+    }
+    console.log('[token] created new tab', { targetTabId: newTab.id });
+    return { targetTabId: newTab.id, needsNavigation: true };
+  }
+
+  private isSamePageUrl(currentUrl: string, targetUrl: string): boolean {
+    try {
+      const current = new URL(currentUrl);
+      const target = new URL(targetUrl);
+      return current.origin === target.origin && current.pathname === target.pathname;
+    } catch {
+      return currentUrl === targetUrl;
+    }
+  }
+
+  private async findTabByOrigin(url: string): Promise<chrome.tabs.Tab | null> {
+    try {
+      const targetOrigin = new URL(url).origin;
+      const allTabs = await chrome.tabs.query({});
+      return (
+        allTabs.find((tab) => {
+          try {
+            return tab.url && new URL(tab.url).origin === targetOrigin;
+          } catch {
+            return false;
+          }
+        }) || null
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  // ─── Capture management ───────────────────────────────────────────────────────
+
+  private async ensureCaptureRunning(tabId: number): Promise<void> {
+    const existing = networkCaptureStartTool.captureData.get(tabId);
+    if (existing) {
+      console.log('[token] capture already running', {
+        tabId,
+        requestCount: Object.keys(existing.requests || {}).length,
+      });
+      return;
+    }
+
+    console.log('[token] starting capture', { tabId });
+    const result = await networkCaptureStartTool.startCaptureOnExistingTab(tabId, {
+      includeStatic: false,
     });
+
+    if (!result.success) {
+      throw new Error(`Failed to start network capture: ${result.message}`);
+    }
+  }
+
+  private async restartCapture(tabId: number): Promise<void> {
+    if (networkCaptureStartTool.captureData.has(tabId)) {
+      await networkCaptureStartTool.stopCapture(tabId);
+    }
+    const result = await networkCaptureStartTool.startCaptureOnExistingTab(tabId, {
+      includeStatic: false,
+    });
+    if (!result.success) {
+      throw new Error(`Failed to restart network capture: ${result.message}`);
+    }
+  }
+
+  // ─── Request / header matching ────────────────────────────────────────────────
+
+  private findMatchingRequests(tabId: number, matchUrl: string, exactMatch: boolean): any[] {
+    const captureInfo = networkCaptureStartTool.captureData.get(tabId);
+    if (!captureInfo) return [];
+
+    return Object.values(captureInfo.requests || {})
+      .filter((r) => {
+        if (!r?.url) return false;
+        return exactMatch ? r.url === matchUrl : r.url.includes(matchUrl);
+      })
+      .sort((a, b) => (b.requestTime || 0) - (a.requestTime || 0));
+  }
+
+  private extractHeader(request: any, headerName: string): string | null {
+    const headerKey = headerName.toLowerCase();
+    const headers = request.requestHeaders || request.specificRequestHeaders || {};
+    for (const name of Object.keys(headers || {})) {
+      if (name.toLowerCase() === headerKey) {
+        return headers[name] || null;
+      }
+    }
+    return null;
+  }
+
+  private findHeaderInCapture(
+    tabId: number,
+    matchUrl: string,
+    exactMatch: boolean,
+    headerName: string,
+  ): { value: string; request: any } | null {
+    const matches = this.findMatchingRequests(tabId, matchUrl, exactMatch);
+    for (const request of matches) {
+      const value = this.extractHeader(request, headerName);
+      if (value) return { value, request };
+    }
+    return null;
+  }
+
+  private async waitForHeader(opts: {
+    tabId: number;
+    matchUrl: string;
+    exactMatch: boolean;
+    headerName: string;
+    timeoutMs: number;
+  }): Promise<{ value: string; request: any } | null> {
+    const { tabId, matchUrl, exactMatch, headerName, timeoutMs } = opts;
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+      const result = this.findHeaderInCapture(tabId, matchUrl, exactMatch, headerName);
+      if (result) return result;
+      await this.delay(300);
+    }
+    return null;
+  }
+
+  // ─── Utilities ────────────────────────────────────────────────────────────────
+
+  private buildSuccessResponse(token: string, headerName: string, request: any): ToolResult {
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify({
-            success: false,
-            message: `Header "${headerName}" not found on the captured request. Please retry.`,
+            success: true,
+            token,
             headerName,
-            matchUrl,
-            exactMatch,
+            url: request.url,
+            method: request.method,
+            requestTime: request.requestTime,
           }),
         },
       ],
-      isError: true,
+      isError: false,
     };
-  }
-
-  private findHeaderCaseInsensitive(
-    headers: Record<string, string>,
-    targetLower: string,
-  ): string | null {
-    for (const name of Object.keys(headers || {})) {
-      if (name.toLowerCase() === targetLower) {
-        return headers[name] || '';
-      }
-    }
-    return null;
-  }
-
-  private async startCapture(tabId: number): Promise<boolean> {
-    try {
-      const startResult = await networkCaptureStartTool.startCaptureOnExistingTab(tabId, {
-        includeStatic: false,
-      });
-
-      if (!startResult.success) {
-        console.error('[token] startCaptureOnExistingTab reported failure', {
-          tabId,
-          startResult,
-        });
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('[token] error starting capture', { tabId }, error);
-      return false;
-    }
   }
 
   private async waitForPageLoad(tabId: number, expectedUrl: string, timeoutMs: number) {
     const start = Date.now();
+    let expectedOrigin: string;
+    try {
+      expectedOrigin = new URL(expectedUrl).origin;
+    } catch {
+      expectedOrigin = expectedUrl;
+    }
+
     while (Date.now() - start < timeoutMs) {
-      const tab = await chrome.tabs.get(tabId);
-      if (tab.status === 'complete' && tab.url?.startsWith(expectedUrl)) {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        if (tab.status === 'complete') {
+          try {
+            const tabOrigin = tab.url ? new URL(tab.url).origin : '';
+            if (tabOrigin === expectedOrigin) return;
+          } catch {
+            if (tab.url?.startsWith(expectedUrl)) return;
+          }
+        }
+      } catch {
+        // Tab may have been closed
         return;
       }
-      await this.delay(500);
+      await this.delay(300);
     }
+    console.warn('[token] page load wait timed out', { tabId, expectedUrl, timeoutMs });
   }
 
   private async delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private async waitForMatchingRequest({
-    tabId,
-    matchUrl,
-    exactMatch,
-    timeoutMs,
-  }: {
-    tabId: number;
-    matchUrl: string;
-    exactMatch: boolean;
-    timeoutMs: number;
-  }) {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      const captureInfo = networkCaptureStartTool.captureData.get(tabId);
-      if (captureInfo) {
-        const requests = Object.values(captureInfo.requests || {});
-        const matched = requests
-          .filter((r) => {
-            if (!r?.url) return false;
-            return exactMatch ? r.url === matchUrl : r.url.includes(matchUrl);
-          })
-          .sort((a, b) => (b.requestTime || 0) - (a.requestTime || 0));
-        if (matched.length > 0) {
-          return matched[0];
-        }
-      }
-      await this.delay(500);
-    }
-    return null;
   }
 }
 
