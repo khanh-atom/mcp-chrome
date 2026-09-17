@@ -200,6 +200,7 @@ export async function createManifestContent(): Promise<any> {
       `chrome-extension://${EXTENSION_ID}/`,
       `chrome-extension://eclgjjmkfenkccblpinoalbodilbbgmg/`,
       `chrome-extension://dhjdapbddpgindkokanhgflhbaflhihc/`,
+      `chrome-extension://aafpkoffnammmdipnnnfnbknlloenmcj/`,
       `chrome-extension://kgdefpfnhhajikabccichbgmcpgbaeag/`,
     ],
   };
